@@ -26,6 +26,7 @@ namespace Torso
             string configFile = @"y:\mufat\testruns\regressionpaths\baseline2.run";
             string proxy = @"C:\Users\jerry\Documents\Projects\trunk2\output\binaries\muFAT\SDKRuntime\muFATProxyD.dll";
             int timeout = -1;
+            bool debug = false;
 
             for (int i = 0; i < args.Length; i++)
             {
@@ -57,6 +58,15 @@ namespace Torso
                             throw new ArgumentException("Timeout must be >1");
                         }
                         break;
+
+                    case "/S":
+                        // option ignored; only kept for compatibility with old app
+                        break;
+
+                    case "/DEBUGBRK":
+                        debug = true;
+                        break;
+
                     case "/?":
                     case "--help":
                     default:
@@ -65,7 +75,8 @@ namespace Torso
 [required] /c         'Full path to config file'
 [required] /res       'Full path to config storage'
 [optional] /proxypath 'Full path to proxy dll'
-[optional] /timeout   'Maximum seconds until test is aborted'");
+[optional] /timeout   'Maximum seconds until test is aborted'
+[optional] /debugbrk  'Sets a breakpoint before running tests for debugging'");
                         return;
                 }
             }
@@ -96,6 +107,11 @@ namespace Torso
 
             using (Torso t = new Torso(configFile, proxy))
             {
+                if (debug)
+                {
+                    System.Diagnostics.Debugger.Break();
+                }
+
                 // set timeout if provided
                 if (timeout > 0)
                 {
