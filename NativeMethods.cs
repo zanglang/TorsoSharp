@@ -57,6 +57,7 @@ namespace Torso
         }
 
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        [return: MarshalAsAttribute(UnmanagedType.I1)]
         internal delegate bool Init();
 
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
@@ -66,6 +67,7 @@ namespace Torso
         internal delegate int GetUTCount();
 
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        [return: MarshalAsAttribute(UnmanagedType.I1)]
         internal delegate bool GetUTName(
             int pos,
             [MarshalAs(UnmanagedType.LPWStr)] string pNamebuf,
@@ -77,6 +79,7 @@ namespace Torso
             int bufsize);
 
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        [return: MarshalAsAttribute(UnmanagedType.I1)]
         internal delegate bool GenericCanExecute(IntPtr p, int pos);
 
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
@@ -94,6 +97,7 @@ namespace Torso
             int bufsize);
 
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        [return: MarshalAsAttribute(UnmanagedType.I1)]
         internal delegate bool GetThreadedExecuteResult(out int result);
 
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]

@@ -55,7 +55,7 @@ namespace Torso
             }
             else if (!File.Exists(proxy))
             {
-                throw new IOException("Proxy " + configFile + " does not exist");
+                throw new IOException("Proxy " + proxy + " does not exist");
             }
 
             this.Passed = this.Failed = 0;
