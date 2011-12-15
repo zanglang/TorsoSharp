@@ -86,6 +86,13 @@ namespace Torso
                 Directory.CreateDirectory(@"C:\muveeDebug");
             }
 
+            // set up exception handling/logging
+            AppDomain.CurrentDomain.UnhandledException += new UnhandledExceptionEventHandler
+            (delegate(object e, UnhandledExceptionEventArgs eargs)
+            {
+                Torso.Log("Unhandled exception: " + eargs.ExceptionObject.ToString());
+            });
+
             // dumping system info
             SysInfoLib sysInfo = new SysInfoLib();
             sysInfo.Init();
@@ -124,11 +131,11 @@ namespace Torso
                 }
                 catch (Exception e)
                 {
-                    t.Log("Torso terminated: " + e);
+                    Torso.Log("Torso terminated: " + e);
                 }
                 finally
                 {
-                    t.Log("Passes {0}, Failures {1}, Untested {2}",
+                    Torso.Log("Passes {0}, Failures {1}, Untested {2}",
                         t.Passed, t.Failed, t.Steps.Count - t.Passed - t.Failed);
 
                     // dump summary report

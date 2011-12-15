@@ -133,7 +133,7 @@ namespace Torso
         /// </summary>
         /// <param name="log">String to write</param>
         /// <param name="args">Miscellaneous parameters for formatting</param>
-        public void Log(string log, params object[] args)
+        public static void Log(string log, params object[] args)
         {
             if (!Directory.Exists(@"C:\muveeDebug"))
             {
@@ -256,7 +256,7 @@ namespace Torso
             }
             catch (Exception e)
             {
-                this.Log("Exception caught during {0}: {1}", step.Name, e.ToString());
+                Torso.Log("Exception caught during {0}: {1}", step.Name, e.ToString());
                 throw;
             }
             finally
@@ -294,7 +294,7 @@ namespace Torso
         /// <param name="fileName">Output filename to write the report to</param>
         public void DumpReport(string fileName)
         {
-            this.Log("Dumping report");
+            Torso.Log("Dumping report");
             using (StreamWriter file = new StreamWriter(fileName))
             {
                 file.WriteLine("time:" + this.StartTime.ToLocalTime().ToString("MM-dd-yyyy, HH:mm:ss"));
@@ -496,10 +496,10 @@ namespace Torso
                     fileName = Path.Combine(ResourcesPath, tokens[0], fileName);
                 }
 
-                // still doesn't exist
+                // still doesn't exist - it's not a filename
                 if (!File.Exists(fileName))
                 {
-                    throw new IOException("Config file " + fileName + " not found");
+                    fileName = "";
                 }
 
                 // create step structure
