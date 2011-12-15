@@ -436,7 +436,7 @@ namespace Torso
                 {
                     // could be a comment line or header instruction
                     string[] tokens = line.Substring(1).Split(
-                        new string[] { ":: " },
+                        new string[] { "::" },
                         StringSplitOptions.None);
 
                     // INCLUDE instruction found
@@ -447,7 +447,7 @@ namespace Torso
                         if (!File.Exists(fileName))
                         {
                             string dir = Path.GetDirectoryName(config);
-                            fileName = Path.Combine(dir, fileName);
+                            fileName = Path.GetFullPath(Path.Combine(dir, fileName));
                         }
 
                         // recursively process included file
