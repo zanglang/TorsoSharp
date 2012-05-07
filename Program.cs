@@ -9,6 +9,7 @@ namespace Torso
 {
     using System;
     using System.IO;
+    using Microsoft.Win32;
     using SysInfoSharp;
 
     /// <summary>
@@ -125,8 +126,15 @@ namespace Torso
                     t.Timeout = timeout;
                 }
 
+                // log current test name in registry
+                string testName = Path.GetFileNameWithoutExtension(configFile);
                 try
                 {
+                    using (RegistryKey key = Registry.CurrentUser.CreateSubKey(@"SOFTWARE\muvee Technologies\muFAT\Torso"))
+                    {
+                        key.SetValue("[CurrentConfig]", testName);
+                    }
+
                     t.RunAll();
                 }
                 catch (Exception e)
@@ -139,10 +147,15 @@ namespace Torso
                         t.Passed, t.Failed, t.Steps.Count - t.Passed - t.Failed);
 
                     // dump summary report
-                    string testName = Path.GetFileNameWithoutExtension(configFile);
                     string report = Path.Combine(@"C:\muveeDebug", testName + ".txt");
                     t.DumpReport(report);
 
+                    // delete subkey
+                    using (RegistryKey key = Registry.CurrentUser.OpenSubKey(@"SOFTWARE\muvee Technologies\muFAT", true))
+                    {
+                        key.DeleteSubKeyTree("Torso", false);
+                    }
+                    
                     // copy log file
                     if (File.Exists(@"C:\muveeDebug\Log.txt"))
                     {
