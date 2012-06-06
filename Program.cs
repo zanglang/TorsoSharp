@@ -24,7 +24,7 @@ namespace Torso
         [STAThread]
         public static void Main(string[] args)
         {
-            string configFile = @"y:\mufat\testruns\regressionpaths\baseline2.run";
+            string configFile = @"y:\mufat\testruns\regressionpaths\baseline2-save.run";
             string proxy = @"C:\Users\jerry\Documents\Projects\trunk2\output\binaries\muFAT\SDKRuntime\muFATProxyD.dll";
             int timeout = -1;
             bool debug = false;
@@ -132,7 +132,7 @@ namespace Torso
                 {
                     using (RegistryKey key = Registry.CurrentUser.CreateSubKey(@"SOFTWARE\muvee Technologies\muFAT\Torso"))
                     {
-                        key.SetValue("[CurrentConfig]", testName);
+                        key.SetValue("[ConfigName]", testName);
                     }
 
                     t.RunAll();
