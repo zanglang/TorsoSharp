@@ -8,9 +8,9 @@
 namespace Torso
 {
     using System;
+    using System.Diagnostics;
     using System.IO;
     using Microsoft.Win32;
-    using SysInfoSharp;
 
     /// <summary>
     /// Main program
@@ -24,7 +24,7 @@ namespace Torso
         [STAThread]
         public static void Main(string[] args)
         {
-            string configFile = @"y:\mufat\testruns\regressionpaths\baseline2-save.run";
+            string configFile = @"Y:\mufat\testruns\regressionpaths\StyleTesting\REA\S00574_REAClassicVanilla.run";
             string proxy = @"C:\Users\jerry\Documents\Projects\trunk2\output\binaries\muFAT\SDKRuntime\muFATProxyD.dll";
             int timeout = -1;
             bool debug = false;
@@ -38,26 +38,28 @@ namespace Torso
                         {
                             configFile = args[++i];
                         }
+
                         break;
                     case "/RES":
                         if (args.Length > i + 1)
                         {
                             Torso.ResourcesPath = args[++i];
                         }
+
                         break;
                     case "/PROXYPATH":
                         if (args.Length > i + 1)
                         {
                             proxy = args[++i];
                         }
+
                         break;
                     case "/TIMEOUT":
-                        if ((args.Length > i + 1) &&
-                            Int32.TryParse(args[++i], out timeout) &&
-                            timeout <= 0)
+                        if ((args.Length > i + 1) && int.TryParse(args[++i], out timeout) && timeout <= 0)
                         {
                             throw new ArgumentException("Timeout must be >1");
                         }
+
                         break;
 
                     case "/S":
@@ -68,10 +70,9 @@ namespace Torso
                         debug = true;
                         break;
 
-                    case "/?":
-                    case "--help":
                     default:
-                        Console.WriteLine(@"Parameters:
+                        Console.WriteLine(
+                            @"Parameters:
 -------------------------------------------------------
 [required] /c         'Full path to config file'
 [required] /res       'Full path to config storage'
@@ -88,36 +89,14 @@ namespace Torso
             }
 
             // set up exception handling/logging
-            AppDomain.CurrentDomain.UnhandledException += new UnhandledExceptionEventHandler
-            (delegate(object e, UnhandledExceptionEventArgs eargs)
-            {
-                Torso.Log("Unhandled exception: " + eargs.ExceptionObject.ToString());
-            });
+            AppDomain.CurrentDomain.UnhandledException +=
+                (e, eargs) => Torso.Log("Unhandled exception: " + eargs.ExceptionObject.ToString());
 
-            // dumping system info
-            SysInfoLib sysInfo = new SysInfoLib();
-            sysInfo.Init();
-            using (StreamWriter file = new StreamWriter(
-                Path.Combine(@"C:\muveeDebug", "sysinfoout.txt")))
-            {
-                foreach (string category in sysInfo.GetCategories())
-                {
-                    file.WriteLine("--------------------------------------------");
-                    file.WriteLine("Category: " + category);
-                    file.WriteLine("--------------------------------------------");
-
-                    foreach (var pair in sysInfo[category])
-                    {
-                        file.WriteLine("\t{0}={1}", pair.Key, pair.Value);
-                    }
-                }
-            }
-
-            using (Torso t = new Torso(configFile, proxy))
+            using (var t = new Torso(configFile, proxy))
             {
                 if (debug)
                 {
-                    System.Diagnostics.Debugger.Break();
+                    Debugger.Break();
                 }
 
                 // set timeout if provided
@@ -127,11 +106,14 @@ namespace Torso
                 }
 
                 // log current test name in registry
-                string testName = Path.GetFileNameWithoutExtension(configFile);
+                var testName = Path.GetFileNameWithoutExtension(configFile);
                 try
                 {
-                    using (RegistryKey key = Registry.CurrentUser.CreateSubKey(@"SOFTWARE\muvee Technologies\muFAT\Torso"))
+                    using (
+                        var key = Registry.CurrentUser.CreateSubKey(@"SOFTWARE\muvee Technologies\muFAT\Torso"))
                     {
+                        Debug.Assert(key != null, "key != null");
+                        Debug.Assert(testName != null, "testName != null");
                         key.SetValue("[ConfigName]", testName);
                     }
 
@@ -143,19 +125,25 @@ namespace Torso
                 }
                 finally
                 {
-                    Torso.Log("Passes {0}, Failures {1}, Untested {2}",
-                        t.Passed, t.Failed, t.Steps.Count - t.Passed - t.Failed);
+                    Torso.Log(
+                        "Passes {0}, Failures {1}, Untested {2}",
+                        t.Passed,
+                        t.Failed,
+                        t.Steps.Count - t.Passed - t.Failed);
 
                     // dump summary report
                     string report = Path.Combine(@"C:\muveeDebug", testName + ".txt");
                     t.DumpReport(report);
 
                     // delete subkey
-                    using (RegistryKey key = Registry.CurrentUser.OpenSubKey(@"SOFTWARE\muvee Technologies\muFAT", true))
+                    using (var key = Registry.CurrentUser.OpenSubKey(
+                        @"SOFTWARE\muvee Technologies\muFAT",
+                        true))
                     {
+                        Debug.Assert(key != null, "key != null");
                         key.DeleteSubKeyTree("Torso", false);
                     }
-                    
+
                     // copy log file
                     if (File.Exists(@"C:\muveeDebug\Log.txt"))
                     {
