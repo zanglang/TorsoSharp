@@ -25,35 +25,32 @@ namespace Torso
         /// <summary>
         /// Root folder to find test stub instructions
         /// </summary>
-        public static string ResourcesPath = @"y:\mufat_resources\sdkruntime";
+        private const string ResourcesPath = @"y:\mufat_resources\sdkruntime";
 
         /// <summary>
-        /// IntPtr handle wrapper to muFAT proxy DLL
+        /// <code>IntPtr</code> handle wrapper to muFAT proxy DLL
         /// </summary>
-        private SafeLibraryHandle handle;
+        private readonly SafeLibraryHandle handle;
 
         /// <summary>
-        /// IntPtr handle to CMVCore object
+        /// <code>IntPtr</code> handle to <code>CMVCore</code> object
         /// </summary>
-        private IntPtr baseObject;
-
-        /// <summary>
-        /// Synchronization lock
-        /// </summary>
-        private readonly object sync = new object();
-
+        private readonly IntPtr baseObject;
+        
         /// <summary>
         /// Initializes a new instance of the Torso class
         /// </summary>
         /// <param name="configFile">Path to run configuration file</param>
         /// <param name="proxy">Path to muFAT proxy DLL</param>
+        /// <param name="timeout">How long to wait for a run to complete before forcefully terminating</param>
         public Torso(string configFile, string proxy = "muFATProxy.dll", int timeout = 7200)
         {
             if (!File.Exists(configFile))
             {
                 throw new IOException("Run file " + configFile + " does not exist");
             }
-            else if (!File.Exists(proxy))
+            
+            if (!File.Exists(proxy))
             {
                 throw new IOException("Proxy " + proxy + " does not exist");
             }
@@ -72,13 +69,13 @@ namespace Torso
             }
 
             // initialize muFAT proxy
-            if (!GetDelegate<NativeMethods.Init>("Init").Invoke())
+            if (!this.GetDelegate<NativeMethods.Init>("Init").Invoke())
             {
                 throw new Exception("Could not initialize proxy");
             }
 
             // initializes CMVCore on the muvee Runtime
-            this.baseObject = GetDelegate<NativeMethods.GetBaseObject>("GetBaseObject").Invoke();
+            this.baseObject = this.GetDelegate<NativeMethods.GetBaseObject>("GetBaseObject").Invoke();
             if (this.baseObject == IntPtr.Zero)
             {
                 throw new Exception("Could not get base object");
@@ -114,22 +111,7 @@ namespace Torso
         public int Timeout { get; set; }
 
         /// <summary>
-        /// Cleans up unmanaged resources
-        /// </summary>
-        public void Dispose()
-        {
-            if (!this.handle.IsClosed)
-            {
-                // shutdown muFAT proxy
-                GetDelegate<NativeMethods.Shutdown>("Shutdown").Invoke();
-
-                // call FreeLibrary on handle
-                this.handle.Close();
-            }
-        }
-
-        /// <summary>
-        /// Append a string to the muvee debugging log file
+        /// Append a string to the debugging log file
         /// </summary>
         /// <param name="log">String to write</param>
         /// <param name="args">Miscellaneous parameters for formatting</param>
@@ -148,12 +130,12 @@ namespace Torso
 
             // pre-format string
             string str = string.Format(log, args);
-            
+
             for (int i = 0; i < 3; i++)
             {
                 try
                 {
-                    using (StreamWriter file = new StreamWriter(logFile, true))
+                    using (var file = new StreamWriter(logFile, true))
                     {
                         file.WriteLine(
                             "{0}\t\tMVUT DETAILS: " + str,
@@ -165,6 +147,21 @@ namespace Torso
                 {
                     Thread.Sleep(500);
                 }
+            }
+        }
+
+        /// <summary>
+        /// Cleans up unmanaged resources
+        /// </summary>
+        public void Dispose()
+        {
+            if (!this.handle.IsClosed)
+            {
+                // shutdown muFAT proxy
+                this.GetDelegate<NativeMethods.Shutdown>("Shutdown").Invoke();
+
+                // call FreeLibrary on handle
+                this.handle.Close();
             }
         }
 
@@ -184,12 +181,12 @@ namespace Torso
             }
 
             // lookup all function pointers required to run a step
-            var getUTID = GetDelegate<NativeMethods.GetUTID>("GetUTID");
-            var genericCanExecute = GetDelegate<NativeMethods.GenericCanExecute>("GenericCanExecute");
-            var genericExecute = GetDelegate<NativeMethods.GenericExecute>("GenericExecute");
-            var threadedExecute = GetDelegate<NativeMethods.ThreadedExecute>("ThreadedExecute");
-            var getResult = GetDelegate<NativeMethods.GetThreadedExecuteResult>("GetThreadedExecuteResult");
-            var submitClass = GetDelegate<NativeMethods.SubmitClass>("SubmitClass");
+            var getTestId = this.GetDelegate<NativeMethods.GetUTID>("GetUTID");
+            var genericCanExecute = this.GetDelegate<NativeMethods.GenericCanExecute>("GenericCanExecute");
+            var genericExecute = this.GetDelegate<NativeMethods.GenericExecute>("GenericExecute");
+            var threadedExecute = this.GetDelegate<NativeMethods.ThreadedExecute>("ThreadedExecute");
+            var getResult = this.GetDelegate<NativeMethods.GetThreadedExecuteResult>("GetThreadedExecuteResult");
+            var submitClass = this.GetDelegate<NativeMethods.SubmitClass>("SubmitClass");
 
             // start timer
             Stopwatch stopwatch = Stopwatch.StartNew();
@@ -198,14 +195,14 @@ namespace Torso
             try
             {
                 // get internal test stub ID defined in Arm
-                int testNum = getUTID(step.Name, step.Name.Length + 1);
+                int testNum = getTestId(step.Name, step.Name.Length + 1);
                 if (testNum == -1)
                 {
                     throw new Exception("Test stub not found for " + step.Name);
                 }
 
                 // load the handler class from class factory and verify that it can run
-                IntPtr obj = GetDelegate<NativeMethods.GetClass>("GetClass")(
+                IntPtr obj = this.GetDelegate<NativeMethods.GetClass>("GetClass")(
                     step.ClassName, step.ClassName.Length + 1, this.baseObject);
                 if (!genericCanExecute(obj, testNum))
                 {
@@ -220,8 +217,7 @@ namespace Torso
                         step.Name.Contains("AnalyseTillDone"))
                     {
                         // use threaded version so we can monitor time elapsed
-                        IntPtr thread = threadedExecute(obj, testNum,
-                            step.ConfigFile, step.ConfigFile.Length + 1);
+                        threadedExecute(obj, testNum, step.ConfigFile, step.ConfigFile.Length + 1);
                         int timeout = this.Timeout;
 
                         // poll for results - returns false if results are not yet available
@@ -237,8 +233,7 @@ namespace Torso
                     }
                     else
                     {
-                        result = genericExecute(obj, testNum, step.ConfigFile,
-                            step.ConfigFile.Length + 1);
+                        result = genericExecute(obj, testNum, step.ConfigFile, step.ConfigFile.Length + 1);
                     }
 
                     submitClass(step.ClassName, step.ClassName.Length + 1, obj, this.baseObject);
@@ -247,16 +242,17 @@ namespace Torso
                         // stop executing loop if step failed
                         break;
                     }
-                    else if (step.Repeat > 0)
+                    
+                    if (step.Repeat > 0)
                     {
                         // pause momentarily
-                        System.Threading.Thread.Sleep(1000);
+                        Thread.Sleep(1000);
                     }
                 }
             }
             catch (Exception e)
             {
-                Torso.Log("Exception caught during {0}: {1}", step.Name, e.ToString());
+                Log("Exception caught during {0}: {1}", step.Name, e.ToString());
                 throw;
             }
             finally
@@ -294,8 +290,8 @@ namespace Torso
         /// <param name="fileName">Output filename to write the report to</param>
         public void DumpReport(string fileName)
         {
-            Torso.Log("Dumping report");
-            using (StreamWriter file = new StreamWriter(fileName))
+            Log("Dumping report");
+            using (var file = new StreamWriter(fileName))
             {
                 file.WriteLine("time:" + this.StartTime.ToLocalTime().ToString("MM-dd-yyyy, HH:mm:ss"));
                 file.WriteLine("passes:" + this.Passed);
@@ -316,7 +312,7 @@ namespace Torso
 
         /// <summary>
         /// Dynamically looks up a function from the loaded proxy DLL using
-        /// GetProcAddress
+        /// <code>GetProcAddress</code>
         /// </summary>
         /// <typeparam name="T">Delegate of the function signature</typeparam>
         /// <param name="function">Function name to load</param>
@@ -328,13 +324,14 @@ namespace Torso
             {
                 throw new Win32Exception("DLL handle has already been released");
             }
-            else if (!typeof(T).IsSubclassOf(typeof(Delegate)))
+            
+            if (!typeof(T).IsSubclassOf(typeof(Delegate)))
             {
                 throw new ArgumentException(typeof(T).Name + " is not a valid delegate");
             }
 
             // find function pointer in DLL
-            IntPtr ptr = NativeMethods.GetProcAddress(this.handle, function);
+            var ptr = NativeMethods.GetProcAddress(this.handle, function);
             if (ptr == IntPtr.Zero)
             {
                 throw new Win32Exception("Could not resolve function " + function);
@@ -363,12 +360,13 @@ namespace Torso
             // keep reading until we find end of block
             while (enumerator.MoveNext())
             {
-                string next = enumerator.Current;
+                var next = enumerator.Current;
                 if (next.Length == 0)
                 {
                     continue;
                 }
-                else if (next[0] == '(' && enumerator.MoveNext())
+                
+                if (next[0] == '(' && enumerator.MoveNext())
                 {
                     // new closure block - recursive processing required
                     closure.AddRange(this.ParseClosure(ref enumerator));
@@ -379,7 +377,7 @@ namespace Torso
                     if (next[1] == '*')
                     {
                         // number of times to repeat block
-                        Int32.TryParse(next.Substring(2), out count);
+                        int.TryParse(next.Substring(2), out count);
                     }
 
                     break;
@@ -418,7 +416,7 @@ namespace Torso
 
             var stack = new List<string>();
             var lines = configText.Split(Environment.NewLine.ToCharArray())
-                            .Select(s => s.Trim()).ToList<string>();
+                            .Select(s => s.Trim()).ToList();
             var enumerator = lines.GetEnumerator() as IEnumerator<string>;
             while (enumerator.MoveNext())
             {
@@ -427,7 +425,8 @@ namespace Torso
                 {
                     continue;
                 }
-                else if (line[0] == '(')
+
+                if (line[0] == '(')
                 {
                     // closure block found; pass reference to enumerator
                     stack.AddRange(this.ParseClosure(ref enumerator));
@@ -436,7 +435,7 @@ namespace Torso
                 {
                     // could be a comment line or header instruction
                     string[] tokens = line.Substring(1).Split(
-                        new string[] { "::" },
+                        new[] { "::" },
                         StringSplitOptions.None);
 
                     // INCLUDE instruction found
@@ -447,6 +446,7 @@ namespace Torso
                         if (!File.Exists(fileName))
                         {
                             string dir = Path.GetDirectoryName(config);
+                            Debug.Assert(dir != null, "dir != null");
                             fileName = Path.GetFullPath(Path.Combine(dir, fileName));
                         }
 
@@ -486,7 +486,7 @@ namespace Torso
 
                 // first token describes class/interface/function
                 var commands = tokens[0].Split(
-                    new string[] { "__" },
+                    new[] { "__" },
                     StringSplitOptions.None);
 
                 // resolve relative path by resources folder
@@ -499,11 +499,11 @@ namespace Torso
                 // still doesn't exist - it's not a filename
                 if (!File.Exists(fileName))
                 {
-                    fileName = "";
+                    fileName = string.Empty;
                 }
 
                 // create step structure
-                Step step = new Step()
+                var step = new Step
                 {
                     Name = tokens[0],
                     ClassName = commands[1],
@@ -515,7 +515,7 @@ namespace Torso
                 // repeat times
                 if (tokens.Length > 2 && tokens[2].Length > 0)
                 {
-                    step.Repeat = Int32.Parse(tokens[2]);
+                    step.Repeat = int.Parse(tokens[2]);
                 }
 
                 this.Steps.Add(step);

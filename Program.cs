@@ -40,13 +40,6 @@ namespace Torso
                         }
 
                         break;
-                    case "/RES":
-                        if (args.Length > i + 1)
-                        {
-                            Torso.ResourcesPath = args[++i];
-                        }
-
-                        break;
                     case "/PROXYPATH":
                         if (args.Length > i + 1)
                         {
