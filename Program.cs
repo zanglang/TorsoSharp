@@ -11,6 +11,7 @@ namespace Torso
     using System.Diagnostics;
     using System.IO;
     using Microsoft.Win32;
+    using System.Windows.Forms;
 
     /// <summary>
     /// Main program
@@ -89,7 +90,7 @@ namespace Torso
             {
                 if (debug)
                 {
-                    Debugger.Break();
+                    MessageBox.Show("attach a debugger now");
                 }
 
                 // set timeout if provided

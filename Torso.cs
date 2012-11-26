@@ -81,6 +81,7 @@ namespace Torso
                 throw new Exception("Could not get base object");
             }
 
+
             // parse the run file
             this.Parse(configFile);
         }
