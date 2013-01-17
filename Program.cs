@@ -86,12 +86,13 @@ namespace Torso
             AppDomain.CurrentDomain.UnhandledException +=
                 (e, eargs) => Torso.Log("Unhandled exception: " + eargs.ExceptionObject.ToString());
 
+            if (debug)
+            {
+                MessageBox.Show("attach a debugger now");
+            }
+
             using (var t = new Torso(configFile, proxy))
             {
-                if (debug)
-                {
-                    MessageBox.Show("attach a debugger now");
-                }
 
                 // set timeout if provided
                 if (timeout > 0)
