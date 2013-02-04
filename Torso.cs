@@ -20,7 +20,7 @@ namespace Torso
     /// <summary>
     /// Torso class
     /// </summary>
-    public class Torso : IDisposable
+    public class Torso : ITorso
     {
         /// <summary>
         /// Root folder to find test stub instructions
@@ -105,6 +105,14 @@ namespace Torso
         /// Gets the number of failed runs
         /// </summary>
         public int Failed { get; private set; }
+
+        public int Skipped
+        {
+            get
+            {
+                return this.Steps.Count - this.Passed - this.Failed;
+            }
+        }
 
         /// <summary>
         /// Gets or sets the number of seconds to wait until a test is considered timed out

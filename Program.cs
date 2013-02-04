@@ -10,8 +10,8 @@ namespace Torso
     using System;
     using System.Diagnostics;
     using System.IO;
-    using Microsoft.Win32;
     using System.Windows.Forms;
+    using Microsoft.Win32;
 
     /// <summary>
     /// Main program
@@ -25,8 +25,8 @@ namespace Torso
         [STAThread]
         public static void Main(string[] args)
         {
-            string configFile = @"Y:\mufat\testruns\regressionpaths\StyleTesting\REA\S00574_REAClassicVanilla.run";
-            string proxy = @"C:\Users\jerry\Documents\Projects\trunk2\output\binaries\muFAT\SDKRuntime\muFATProxyD.dll";
+            string configFile = string.Empty;
+            string proxy = string.Empty;
             int timeout = -1;
             bool debug = false;
 
@@ -38,6 +38,10 @@ namespace Torso
                         if (args.Length > i + 1)
                         {
                             configFile = args[++i];
+                            if (!File.Exists(configFile))
+                            {
+                                throw new IOException(configFile + " does not exist!");
+                            }
                         }
 
                         break;
@@ -65,6 +69,12 @@ namespace Torso
                         break;
 
                     default:
+                        if (File.Exists(args[i]))
+                        {
+                            configFile = args[i];
+                            break;
+                        }
+
                         Console.WriteLine(
                             @"Parameters:
 -------------------------------------------------------
@@ -75,6 +85,16 @@ namespace Torso
 [optional] /debugbrk  'Sets a breakpoint before running tests for debugging'");
                         return;
                 }
+            }
+
+            if (string.IsNullOrEmpty(configFile))
+            {
+                throw new Exception("Config file is not set!");
+            }
+
+            if (Path.GetExtension(configFile) != ".py" && string.IsNullOrEmpty(proxy))
+            {
+                throw new Exception("Proxy DLL is not set!");
             }
 
             if (!Directory.Exists(@"C:\muveeDebug"))
@@ -88,10 +108,11 @@ namespace Torso
 
             if (debug)
             {
-                MessageBox.Show("attach a debugger now");
+                MessageBox.Show("Attach a debugger now.");
             }
 
-            using (var t = new Torso(configFile, proxy))
+            using (var t = (Path.GetExtension(configFile) == ".py")
+                ? (ITorso)new IronTorso(configFile) : new Torso(configFile, proxy))
             {
 
                 // set timeout if provided
@@ -124,7 +145,7 @@ namespace Torso
                         "Passes {0}, Failures {1}, Untested {2}",
                         t.Passed,
                         t.Failed,
-                        t.Steps.Count - t.Passed - t.Failed);
+                        t.Skipped);
 
                     // dump summary report
                     string report = Path.Combine(@"C:\muveeDebug", testName + ".txt");
