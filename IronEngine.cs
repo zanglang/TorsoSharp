@@ -55,7 +55,7 @@ namespace Torso
             // precompressed ironpython libraries
             if (File.Exists("packages.zip"))
             {
-                AddSearchPath("packages.zip");
+                AddSearchPath(Path.GetFullPath("packages.zip"));
             }
 
             AddSearchPath(Environment.CurrentDirectory);
