@@ -59,8 +59,9 @@ namespace Torso
         {
             get
             {
-                var result = this.GetResults("passed") ?? new List<object>();
-                return result.Count;
+                // var result = this.GetResults("passed") ?? new List<object>();
+                // return result.Count;
+                return Engine.Scope.GetVariable<int>("passed");
             }
         }
 
@@ -71,8 +72,9 @@ namespace Torso
         {
             get
             {
-                var result = this.GetResults("failures") ?? new List<object>();
-                return result.Count;
+                // var result = this.GetResults("failures") ?? new List<object>();
+                // return result.Count;
+                return Engine.Scope.GetVariable<int>("failed");
             }
         }
 
@@ -83,8 +85,9 @@ namespace Torso
         {
             get
             {
-                var result = this.GetResults("skipped") ?? new List<object>();
-                return result.Count;
+                // var result = this.GetResults("skipped") ?? new List<object>();
+                // return result.Count;
+                return Engine.Scope.GetVariable<int>("skipped");
             }
         }
 
@@ -116,11 +119,11 @@ namespace Torso
             try
             {
                 Engine.Execute(this.file);
-                var result = Engine.Scope.GetVariable("result");
+                /*var result = Engine.Scope.GetVariable("result");
                 if (result == null)
                 {
                     throw new Exception("Script did not return a valid result!");
-                }
+                }*/
 
                 HasRun = true;
             }
@@ -158,14 +161,23 @@ namespace Torso
         public void DumpReport(string fileName)
         {
             // we already have the results
-            var logfile = this.GetResults("logfile");
-            if (logfile == null)
+            //var logfile = this.GetResults("logfile");
+            try
             {
-                Console.WriteLine("No results available.");
-                return;
-            }
+                var logfile = Engine.Scope.GetVariable<string>("logfile");
+                if (logfile == null)
+                {
+                    Console.WriteLine("No results available.");
+                    return;
+                }
 
-            System.IO.File.Copy(logfile, fileName, true);
+                System.IO.File.Copy(logfile, fileName, true);
+            }
+            catch (MissingMemberException)
+            {
+                // do nothing
+                Console.WriteLine("Script file did not return a 'logfile' variable.");
+            }
         }
 
         public void Dispose()
