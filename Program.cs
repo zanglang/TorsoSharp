@@ -10,6 +10,7 @@ namespace Torso
     using System;
     using System.Diagnostics;
     using System.IO;
+    using System.Threading;
     using System.Windows.Forms;
     using Microsoft.Win32;
 
@@ -159,6 +160,9 @@ namespace Torso
                         Debug.Assert(key != null, "key != null");
                         key.DeleteSubKeyTree("Torso", false);
                     }
+
+                    // wait for log.txt to finish writing
+                    Thread.Sleep(1000);
 
                     // copy log file
                     if (File.Exists(@"C:\muveeDebug\Log.txt"))
