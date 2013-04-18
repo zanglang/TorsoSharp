@@ -43,7 +43,8 @@ namespace Torso
 
             // create script engine
             this.Engine = Python.CreateEngine(options);
-            this.Scope = this.Engine.CreateScope();
+            //this.Scope = this.Engine.CreateScope();
+            this.Scope = this.Engine.CreateModule("__main__");
             this.Scope.SetVariable("__name__", "__main__");
             
             // set up search paths for common Python modules
