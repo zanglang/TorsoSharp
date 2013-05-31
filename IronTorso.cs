@@ -8,9 +8,8 @@
 namespace Torso
 {
     using System;
-    using System.Collections.Generic;
     using System.Threading;
-    using IronPython.Runtime.Types;
+    using System.Threading.Tasks;
     using Microsoft.Scripting.Hosting;
 
     /// <summary>
@@ -24,34 +23,12 @@ namespace Torso
         /// <param name="scriptFile">Path to an IronPython script file</param>
         public IronTorso(string scriptFile)
         {
+            // default 2 hours
+            this.Timeout = 7200;
             this.file = scriptFile;
             this.Engine = new IronEngine();
         }
 
-        /// <summary>
-        /// Retrieves the testing results, if it has been executed. If 'attribute'
-        /// is defined, returns the value of that result attribute.
-        /// </summary>
-        /// <param name="attribute">The attribute name to lookup</param>
-        /// <returns>The unittest framework's TestResults</returns>
-        private dynamic GetResults(string attribute = "")
-        {
-            // check if tests have been run
-            if (!this.HasRun || !this.Engine.Scope.ContainsVariable("result"))
-            {
-                return null;
-            }
-
-            var result = this.Engine.Scope.GetVariable("result");
-            if (!string.IsNullOrEmpty(attribute) && ((IPythonObject)result).Dict.ContainsKey(attribute))
-            {
-                return ((IPythonObject)result).Dict[attribute];
-            }
-
-            // attribute not defined
-            return result;
-        }
-        
         /// <summary>
         /// Gets the number of passed runs
         /// </summary>
@@ -59,9 +36,7 @@ namespace Torso
         {
             get
             {
-                // var result = this.GetResults("passed") ?? new List<object>();
-                // return result.Count;
-                return Engine.Scope.GetVariable<int>("passed");
+                return Engine.Scope.ContainsVariable("passed") ? Engine.Scope.GetVariable<int>("passed") : 0;
             }
         }
 
@@ -72,9 +47,7 @@ namespace Torso
         {
             get
             {
-                // var result = this.GetResults("failures") ?? new List<object>();
-                // return result.Count;
-                return Engine.Scope.GetVariable<int>("failed");
+                return Engine.Scope.ContainsVariable("failed") ? Engine.Scope.GetVariable<int>("failed") : 0;
             }
         }
 
@@ -85,9 +58,7 @@ namespace Torso
         {
             get
             {
-                // var result = this.GetResults("skipped") ?? new List<object>();
-                // return result.Count;
-                return Engine.Scope.GetVariable<int>("skipped");
+                return Engine.Scope.ContainsVariable("skipped") ? Engine.Scope.GetVariable<int>("skipped") : 0;
             }
         }
 
@@ -97,7 +68,7 @@ namespace Torso
         public bool HasRun = false;
 
         /// <summary>
-        /// Gets or sets the number of seconds to wait until a test is considered timed out
+        /// Gets or sets the number of seconds to wait until a test is considered timed out. Default: 2 hours.
         /// </summary>
         public int Timeout { get; set; }
 
@@ -116,41 +87,46 @@ namespace Torso
         /// </summary>
         public void RunAll()
         {
+            // create a cancellation token for the task
+            var source = new CancellationTokenSource();
+            var t = Task.Factory.StartNew(
+                () =>
+                    {
+                        Engine.Execute(this.file);
+                        HasRun = true;
+                    },
+                source.Token);
+
             try
             {
-                Engine.Execute(this.file);
-                /*var result = Engine.Scope.GetVariable("result");
-                if (result == null)
+                if (t.Wait(this.Timeout * 1000) == false)
                 {
-                    throw new Exception("Script did not return a valid result!");
-                }*/
-
-                HasRun = true;
-            }
-            catch (MissingMemberException)
-            {
-                Console.WriteLine("Script file needs to store results in 'result'!");
-                throw;
-            }
-            catch (ThreadAbortException e)
-            {
-                // Ctrl-C was hit
-                if (e.ExceptionState is Microsoft.Scripting.KeyboardInterruptException)
-                {
-                    Thread.ResetAbort();
-                    Engine.Engine.Runtime.Shutdown();
+                    // run has timed out
+                    source.Cancel();
+                    throw new TimeoutException(@"
+***********************************************
+Timed out after " + this.Timeout + @" seconds, terminating!
+***********************************************");
                 }
-                else
+            }
+            catch (AggregateException ae)
+            {
+                foreach (var e in ae.InnerExceptions)
                 {
+                    // Ctrl-C was hit
+                    if (e is ThreadAbortException
+                        && ((ThreadAbortException)e).ExceptionState is Microsoft.Scripting.KeyboardInterruptException)
+                    {
+                        Thread.ResetAbort();
+                        Engine.Engine.Runtime.Shutdown();
+                        return;
+                    }
+
+                    // print internal Python stacktrace
+                    var op = Engine.Engine.GetService<ExceptionOperations>();
+                    Console.WriteLine(op.FormatException(e));
                     throw;
                 }
-            }
-            catch (Exception e)
-            {
-                // print internal Python stacktrace
-                var op = Engine.Engine.GetService<ExceptionOperations>();
-                Console.WriteLine(op.FormatException(e));
-                throw;
             }
         }
 
@@ -160,24 +136,14 @@ namespace Torso
         /// <param name="fileName">Output filename to write the report to</param>
         public void DumpReport(string fileName)
         {
-            // we already have the results
-            //var logfile = this.GetResults("logfile");
-            try
+            if (!this.Engine.Scope.ContainsVariable("logfile"))
             {
-                var logfile = Engine.Scope.GetVariable<string>("logfile");
-                if (logfile == null)
-                {
-                    Console.WriteLine("No results available.");
-                    return;
-                }
-
-                System.IO.File.Copy(logfile, fileName, true);
-            }
-            catch (MissingMemberException)
-            {
-                // do nothing
                 Console.WriteLine("Script file did not return a 'logfile' variable.");
+                return;
             }
+
+            var logfile = this.Engine.Scope.GetVariable<string>("logfile");
+            System.IO.File.Copy(logfile, fileName, true);
         }
 
         public void Dispose()
