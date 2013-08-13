@@ -85,8 +85,8 @@
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <PropertyGroup>
-    <PostBuildEvent>xcopy /y "$(SolutionDir)test_runner.py" "$(OutDir)"
-xcopy /y "$(SolutionDir)runconfig.xml" "$(OutDir)"</PostBuildEvent>
+    <PostBuildEvent>xcopy /y "$(SolutionDir)test_runner.py" "$(TargetDir)"
+xcopy /y "$(SolutionDir)runconfig.xml" "$(TargetDir)"</PostBuildEvent>
   </PropertyGroup>
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
        Other similar extension points exist, see Microsoft.Common.targets.
